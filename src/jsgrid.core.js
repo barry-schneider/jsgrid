@@ -107,6 +107,10 @@
 
         confirmDeleting: true,
         deleteConfirm: "Are you sure?",
+        
+        autocommit: false,
+        confirmAutocommit: true,
+        autocommitConfirm: "Save changes?",
 
         selecting: true,
         selectedRowClass: "jsgrid-selected-row",
@@ -168,6 +172,7 @@
         onItemInserting: $.noop,
         onItemInserted: $.noop,
         onItemEditing: $.noop,
+        onItemEditingRendered: $.noop,
         onItemEditCancelling: $.noop,
         onItemUpdating: $.noop,
         onItemUpdated: $.noop,
@@ -334,6 +339,7 @@
                 case "filtering":
                 case "inserting":
                 case "paging":
+                    if (name == "inserting") this._checkAutocommit();
                     this.refresh();
                     break;
                 case "loadStrategy":
@@ -658,6 +664,13 @@
             });
             return this;
         },
+        
+//               _renderCells: function($row, item, exclude_field_fn) {
+ //                       this._eachField(function (field) {                
+// if (exclude_field_fn && exclude_field_fn(field))
+//                    $row.append("<td/>");
+//                else
+//                   $row.append(this._createCell(item, field));
 
         _createCell: function(item, field) {
             var $result;
@@ -1373,6 +1386,56 @@
                 return $.data(this, JSGRID_ROW_DATA_KEY) === item;
             });
         },
+        
+        editPending: function () { 
+            if (this._insertRow) {
+                let item = this._getInsertItem();
+                if (_.every(_.values(item), (v) => v == null)) return false;
+            }
+            return (this._insertRow || this._editingRow) ? true : false;
+        },
+
+        confirmPending: function () {
+            if (this._editingRow) {
+                if (this._getValidatedEditedItem())
+                    this.updateItem();
+                else
+                    return false;
+            }
+            else {
+                if (!$(this._container).find('.jsgrid-insert-mode-button')[0].classList.contains('jsgrid-mode-on-button')) return true;
+                if (this._getValidatedInsertItem())
+                {
+                    this.insertItem();
+                    this.cancelInsert();
+                }
+                else
+                    return false;
+            }
+            return true;
+        },
+
+        _checkAutocommit() {
+            if (this._editingRow) {
+                if (!this.autocommit)
+                    this.cancelEdit();
+                else {
+                    var $updatingRow = this._editingRow;
+                    var editedItem = this._getValidatedEditedItem();
+
+                    var updatingItem = $updatingRow.data(JSGRID_ROW_DATA_KEY),
+                        updatingItemIndex = this._itemIndex(updatingItem),
+                        updatedItem = $.extend(true, {}, updatingItem, editedItem);
+
+                    if (updatingItem &&
+                        JSON.stringify(JSON.decycle(updatingItem)) !== JSON.stringify(JSON.decycle(updatedItem)) &&
+                        (!this.confirmAutocommit || (this.confirmAutocommit && window.confirm(this.autocommitConfirm))))
+                        this.updateItem();
+                    else
+                        this.cancelEdit();
+                }
+            }
+        },
 
         _editRow: function($row) {
             if(!this.editing)
@@ -1392,6 +1455,8 @@
             if(this._editingRow) {
                 this.cancelEdit();
             }
+            
+            this._checkAutocommit();
 
             var $editRow = this._createEditRow(item);
 
@@ -1399,6 +1464,12 @@
             $row.hide();
             $editRow.insertBefore($row);
             $row.data(JSGRID_EDIT_ROW_DATA_KEY, $editRow);
+            
+            this._callEventHandler(this.onItemEditingRendered, {
+                row: $row,
+                item: item,
+                itemIndex: this._itemIndex(item)
+            });
         },
 
         _createEditRow: function(item) {
@@ -1510,18 +1581,34 @@
             this._editingRow.show();
             this._editingRow = null;
         },
+        
+        cancelInsert: function () {
+            this.option("inserting", false);
+            let btn = $(this._container).find('.jsgrid-insert-mode-button');
+            btn.toggleClass('jsgrid-mode-on-button', false);
+
+            var $row = this._insertRow,
+                editingItem = $row.data(JSGRID_ROW_DATA_KEY),
+                editingItemIndex = this._itemIndex(editingItem);
+
+            this._callEventHandler(this.onItemEditCancelling, {
+                row: $row,
+                item: editingItem,
+                itemIndex: editingItemIndex
+            });
+        },
 
         _getEditRow: function() {
             return this._editingRow && this._editingRow.data(JSGRID_EDIT_ROW_DATA_KEY);
         },
 
-        deleteItem: function(item) {
+        deleteItem: function(item,, noninteractive) {
             var $row = this.rowByItem(item);
 
             if(!$row.length)
                 return;
 
-            if(this.confirmDeleting && !window.confirm(getOrApply(this.deleteConfirm, this, $row.data(JSGRID_ROW_DATA_KEY))))
+            if((noninteractive === undefined || noninteractive == false) && this.confirmDeleting && !window.confirm(getOrApply(this.deleteConfirm, this, $row.data(JSGRID_ROW_DATA_KEY))))
                 return;
 
             return this._deleteRow($row);
