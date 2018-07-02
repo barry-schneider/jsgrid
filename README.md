@@ -2212,3 +2212,13 @@ jQuery (1.8.3 or later)
 * Safari for iOS
 * Chrome for Android
 * IE10 for WP8
+
+## FAQ
+
+**External Data Source for Select Dropdown**
+
+**Save Edit Row Automatically**
+
+**Change value of column based on another column**
+
+
