@@ -2235,6 +2235,22 @@ $.ajax({
 
 **Save Edit Row Automatically**
 
+This code does not allow you to cancel your edits. But will save edits when row lose focus.
+
+Find this row in jsgrid.js file:
+```javascript
+             if(this._editingRow) {
+                this.cancelEdit();	
+```
+
+Change to
+```javascript
+             if(this._editingRow) {
+      this._finishUpdate(this._editingRow, this._getEditedItem());
+```
+
+This Pull Request includes code to configure confirm notice: https://github.com/tabalinas/jsgrid/pull/1015/commits/86b35bb16d59d5119f1c92cc61b5cae6098bee77
+
 **Change value of column based on another column**
 
 
