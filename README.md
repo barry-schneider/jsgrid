@@ -2217,6 +2217,22 @@ jQuery (1.8.3 or later)
 
 **External Data Source for Select Dropdown**
 
+See sample https://github.com/tabalinas/jsgrid-php/blob/master/public/js/sample.js
+
+The database must be loaded before creating the grid. In the example below, use jquery to make an ajax call and then chain "done" method.
+
+```javascript
+$.ajax({
+        type: "GET",
+        url: "/countries/"
+    }).done(function(countries) {
+
+        countries.unshift({ id: "0", name: "" });
+        
+        $("#jsGrid").jsGrid({
+            height: "70%",
+```
+
 **Save Edit Row Automatically**
 
 **Change value of column based on another column**
